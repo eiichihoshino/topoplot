@@ -1,9 +1,12 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from collections import Sequence
 import warnings
-def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=None, mx=1, my=1, dx=0, dy=0, scale=0.2, **kwargs):
+
+def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=None, **kwargs):
+    mpl.rcParams['axes.linewidth'] = 0.2
     ax_i = np.array([x_i, line_i, av_i])
     if array.ndim <= ax_i[pd.notnull(ax_i)].max():
         print('Error! There is no axis %d in "array".'%ax_i[pd.notnull(ax_i)].max())
@@ -12,78 +15,108 @@ def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=None, mx=1, my=1, dx=0, dy=0, 
     if not all([array.shape[i] ==1 for i in nonuse_i]):
         print('Error! Size of axis %s must be 1.'%nonuse_i)
         return
-    array1 = np.transpose(array, ax_i[pd.notnull(ax_i)].tolist()+nonuse_i) * my * scale
-    x = np.arange(array1.shape[0])*mx+dx
+    array1 = np.transpose(array, ax_i[pd.notnull(ax_i)].tolist()+nonuse_i)
+    x = np.arange(array1.shape[0])
     lines = [0] * array.shape[line_i]
-    if kwargs.get('color') is None:
-        colors = [plt.get_cmap('tab10')(i%10) for i in range(len(lines))]
-    else:
-        colors = kwargs.get('color')
+    colors = kwargs.get('color', [plt.get_cmap('tab10')(i%10) for i in range(len(lines))])
     for i in range(len(lines)):
         if array1.ndim > 2 and array1.shape[2] > 1:
             warnings.simplefilter('ignore', category=RuntimeWarning)
             y = np.nanmean(array1[:,i,], axis=1)
             y_sd = np.nanstd(array1[:,i,], axis=1)
             ax.fill_between(
-                x, y+dy-y_sd, y+dy+y_sd
+                x, y-y_sd, y+y_sd
                 ,facecolor=colors[i], alpha=0.1)
         else:
             y = array1[:,i]
         lines[i] = ax.plot(
             x
-            ,y+dy
+            ,y
             ,linewidth=0.3
             ,c=colors[i]
         )[0]
-    xlim = (dx, array1.shape[0]*mx+dx)
-    ylim = (dy-my*scale/float(2), dy+my*scale/float(2))
+    if kwargs.get('xlim') is not None:
+        ax.set_xlim(kwargs.get('xlim'))
+    if kwargs.get('ylim') is not None:
+        ax.set_ylim(kwargs.get('ylim'))
     if kwargs.get('hlines') is not None:
         for hline in np.atleast_1d(kwargs.get('hlines')):
-            [plt.arrow(xlim[0], y*my+dy, xlim[1] - xlim[0], 0, lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for y in np.atleast_1d(hline)]
+            [ax.arrow(ax.get_xlim()[0], hline_y, np.ptp(ax.get_xlim()), 0, lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for hline_y in np.atleast_1d(hline)]
     if kwargs.get('vlines') is not None:
         for vline in np.atleast_1d(kwargs.get('vlines')):
-            [plt.arrow(x*mx+dx, ylim[0], 0, ylim[1]-ylim[0], lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for x in np.atleast_1d(vline)]
-    #ax.fill_between(
-    #                x = x, y1=ylim[0], y2=ylim[1]
-    #                ,where=[False]*100+[True]*kwargs.get('stim_duration')+[False]*(array1.shape[0]-100-kwargs.get('stim_duration'))
-    #                ,facecolor='gray', alpha=0.2)
-    head_size = np.nanmean([xlim[1]-xlim[0], ylim[1]-ylim[0]])/30
-    plt.arrow(xlim[0], ylim[0], xlim[1]-xlim[0], 0, lw=0.1, color="k", head_width=head_size, head_length=head_size)
-    plt.arrow(xlim[0], ylim[0], 0, ylim[1]-ylim[0], lw=0.1, color="k", head_width=head_size, head_length=head_size)
-    if kwargs.get('text'):
-        plt.text(xlim[0]+(xlim[1]-xlim[0])/2, ylim[1],  kwargs.get('text'), fontsize=4, horizontalalignment='center')
+            [ax.arrow(vline_x, ax.get_ylim()[0], 0, np.ptp(ax.get_ylim()), lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for vline_x in np.atleast_1d(vline)]
+    [tick.label.set_fontsize(2) for tick in ax.xaxis.get_major_ticks()]
+    ax.tick_params(direction='in', length=1, width=0.2, pad=0.4)
+    [tick.label.set_fontsize(2) for tick in ax.yaxis.get_major_ticks()]
+    if kwargs.get('title') is not None:
+        ax.set_title(kwargs.get('title'), fontsize=4)
     return lines
 
-def topoplot(list_of_array, layout='grid', mx=None, my=None, subtopofunc=None, **kwargs):
+def _isoverlap(s1s2):#s1_left, s1_right, s1_bottom, s1_top, s2_left, s2_right, s2_bottom, s2_top):
+    s1 = s1s2[0]
+    s2 = s1s2[1]
+    return (\
+        (s2[0] <s1[0] and s1[0] < s2[1])\
+        or (s2[0] <s1[1] and s1[1] < s2[1])\
+        or (s1[0] <s2[0] and s2[0] < s1[1])\
+        or (s1[0] <s2[1] and s2[1] < s1[1]))\
+        and\
+        ((s2[2] <s1[2] and s1[2] < s2[3])\
+        or (s2[2] <s1[3] and s1[3] < s2[3])\
+        or (s1[2] <s2[2] and s2[2] < s1[3])\
+        or (s1[2] <s2[3] and s2[3] < s1[3]))
+
+def _find_best_swh(layout, wh_rate=1):
+    from itertools import combinations
+    def _s1s2(layout, sw, sh):
+        return (layout[0], layout[0]+sw, layout[1], layout[1]+sh), (layout[2], layout[2]+sw, layout[3], layout[3]+sh)
+    train = [0.000, 1]
+    pair_layout = pd.DataFrame(list(combinations(range(len(layout)),2)), columns=[ 'ch1', 'ch2'])
+    pair_layout['s1_x'] = layout[pair_layout.ch1.values,0]
+    pair_layout['s1_y'] = layout[pair_layout.ch1.values,1]
+    pair_layout['s2_x'] = layout[pair_layout.ch2.values,0]
+    pair_layout['s2_y'] = layout[pair_layout.ch2.values,1]
+    pair_layout = pair_layout[np.abs(pair_layout.s1_x - pair_layout.s2_x) < 0.3]
+    pair_layout = pair_layout[np.abs(pair_layout.s1_y - pair_layout.s2_y) < 0.3]
+    for n in range(7):
+        isoverlaps = [_isoverlap(_s1s2(layout_, np.mean(train), np.mean(train)*wh_rate)) for layout_ in pair_layout.loc[:,['s1_x','s1_y','s2_x','s2_y']].values]
+        if any(isoverlaps):
+            train[1] = np.mean(train)
+        else:
+            train[0] = np.mean(train)
+    return train[0], train[0]*wh_rate
+
+def topoplot(list_of_array, layout='grid', sw=None, sh=None, subtopofunc=None, **kwargs):
     if isinstance(layout, str) and layout == 'grid':
         grid_size = int(np.ceil(np.sqrt(len(list_of_array))))
         layout = np.stack((
             np.tile(np.arange(grid_size),grid_size)
             ,np.tile(np.arange(grid_size), (grid_size,1)).T.flatten()
         )).T[:len(list_of_array)+1,:]
-    if mx is None:
-        x_i_ = kwargs.get('x_i') if kwargs.get('x_i') is not None else 0
-        x_max_ = np.nanmax([array.shape[x_i_] for array in list_of_array])
-        mx = np.ptp(layout[:,0])/np.sqrt(len(layout)) / x_max_
-    if my is None:
-        line_max_ = np.nanmax([np.ptp(array) for array in list_of_array])
-        my = np.ptp(layout[:,1])/np.sqrt(len(layout)) / line_max_
+        sw = 1/grid_size
+    layout = layout/np.max(layout)
+    if sw is None or sh is None:
+        sw_, sh_ = _find_best_swh(layout)
+    if sw is None:
+        sw = sw_
+    if sh is None:
+        sh = sh_
     if subtopofunc is None:
         subtopofunc = sub_topoplot
-    if kwargs.get('texts') is None:
-        texts = [None] * len(list_of_array)
-    else:
-        texts = kwargs.get('texts')
-    fig = plt.figure(dpi=320)
-    ax = plt.subplot(111)
+    fig = plt.figure(dpi=kwargs.get('dpi', 320))
     lineses = [0] * len(list_of_array)
     for i, array in enumerate(list_of_array):
-        lineses[i] = subtopofunc(ax, array, mx=mx, my=my, dx=layout[i, 0], dy=layout[i, 1], text=texts[i], **kwargs)
-    if kwargs.get('title'):
-        plt.title(kwargs.get('title'))
+        ax = fig.add_axes(list(layout[i,:]) + [sw, sh])
+        lineses[i] = subtopofunc(ax, array
+            ,xlim=kwargs.get('xlims', [None] * len(list_of_array))[i]
+            ,ylim=kwargs.get('ylims', [None] * len(list_of_array))[i]
+            ,title=kwargs.get('titles', [None] * len(list_of_array))[i]
+            ,**kwargs)
+    if kwargs.get('suptitle') is not None:
+        fig.suptitle(kwargs.get('suptitle'))
     try:
         if kwargs.get('labels') is not None:
             plt.legend(handles=lineses[0], labels=kwargs.get('labels'), fontsize='x-small')
     except:
         pass
-    return ax, lineses
+    return fig
