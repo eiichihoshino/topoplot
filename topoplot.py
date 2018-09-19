@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from collections import Sequence
 import warnings
 
 def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=None, **kwargs):
@@ -94,16 +93,16 @@ def topoplot(list_of_array, layout='grid', sw=None, sh=None, subtopofunc=None, *
             ,np.tile(np.arange(grid_size), (grid_size,1)).T.flatten()
         )).T[:len(list_of_array)+1,:]
         sw = 1/grid_size
-    layout = layout/np.max(layout)
+    layout = (layout - np.min(layout, axis=0)) / np.ptp(layout, axis=0)
     if sw is None or sh is None:
-        sw_, sh_ = _find_best_swh(layout)
+        sw_, sh_ = _find_best_swh(layout, kwargs.get('wh', 1))
     if sw is None:
         sw = sw_
     if sh is None:
         sh = sh_
     if subtopofunc is None:
         subtopofunc = sub_topoplot
-    fig = plt.figure(dpi=kwargs.get('dpi', 320))
+    fig = plt.figure(dpi=kwargs.get('dpi', 320), figsize=kwargs.get('figsize', (6,4)))
     lineses = [0] * len(list_of_array)
     for i, array in enumerate(list_of_array):
         ax = fig.add_axes(list(layout[i,:]) + [sw, sh])
@@ -113,7 +112,7 @@ def topoplot(list_of_array, layout='grid', sw=None, sh=None, subtopofunc=None, *
             ,title=kwargs.get('titles', [None] * len(list_of_array))[i]
             ,**kwargs)
     if kwargs.get('suptitle') is not None:
-        fig.suptitle(kwargs.get('suptitle'))
+        fig.suptitle(kwargs.get('suptitle'), y = np.max(layout[:,1])+sh*1.2)
     try:
         if kwargs.get('labels') is not None:
             plt.legend(handles=lineses[0], labels=kwargs.get('labels'), fontsize='x-small')
