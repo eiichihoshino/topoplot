@@ -39,7 +39,8 @@ def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
     '''
     x = np.arange(array1.shape[0])
     lines = [0] * array.shape[line_i]
-    if kwargs.get('colors') is None:
+    colors = kwargs.get('colors')
+    if colors is None:
         colors = [plt.get_cmap('tab10')(i%10) for i in range(len(lines))]
     for i in range(len(lines)):
         if array1.shape[2] > 1:
@@ -76,7 +77,7 @@ def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
                 ,facecolor=colors[i], alpha=0.1)
         else:
             y = array1[:,i]
-        
+
         lines[i] = ax.plot(
             x
             ,y
@@ -85,7 +86,7 @@ def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
         )[0]
         '''
     if kwargs.get('texts') is not None:
-        [_set(ax.text, text_) for text_ in kwargs.get('texts') if text_ is not None]
+        [_set(ax.text, text_) for text_ in kwargs.get('texts') if isinstance(text_,dict) and all([xys in text_.keys() for xys in ('x', 'y', 's')])]
     if kwargs.get('xticks') is not None:
         _set(ax.set_xticks,kwargs.get('xticks'))
     if kwargs.get('xticklabels') is not None:
@@ -219,4 +220,6 @@ def topoplot(list_of_array, layout='grid', sws=None, shs=None, subtopofunc=None,
         pass
     if kwargs.get('savefig') is not None:
         _set(fig.savefig, kwargs.get('savefig'))
+    if kwargs.get('show') is not None and not kwargs.get('show'):
+        plt.close(fig)
     return fig
