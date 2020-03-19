@@ -26,19 +26,36 @@ def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
         print('Error! x_i: %d, line_i:%d, av_i;%d. x_i, line_i and av_i must be different.'%(x_i,line_i,av_i))
         return
     array1 = np.transpose(array, [x_i, line_i, av_i])
-    '''
-    ax_i = np.array([x_i, line_i, av_i])
-    if array.ndim <= ax_i[pd.notnull(ax_i)].max():
-        print('Error! There is no axis %d in "array".'%ax_i[pd.notnull(ax_i)].max())
-        return
-    nonuse_i = list(set(range(array.ndim)).difference(set(ax_i[pd.notnull(ax_i)])))
-    if not all([array.shape[i] ==1 for i in nonuse_i]):
-        print('Error! Size of axis %s must be 1.'%nonuse_i)
-        return
-    array1 = np.transpose(array, ax_i[pd.notnull(ax_i)].tolist()+nonuse_i)
-    '''
+    lines = plot_func(ax, array1, av_options=av_options, **kwargs)
+
+    if kwargs.get('texts') is not None:
+        [_set(ax.text, text_) for text_ in kwargs.get('texts') if isinstance(text_,dict) and all([xys in text_.keys() for xys in ('x', 'y', 's')])]
+    _set(ax.set_xticks,kwargs.get('xticks'))
+    _set(ax.set_xticklabels,kwargs.get('xticklabels'))
+    _set(ax.set_yticks,kwargs.get('yticks'))
+    _set(ax.set_yticklabels,kwargs.get('yticklabels'))
+    if kwargs.get('xlim') is not None:
+        ax.set_xlim(kwargs.get('xlim'))
+    if kwargs.get('ylim') is not None:
+        ax.set_ylim(kwargs.get('ylim'))
+    if kwargs.get('zorder') is not None:
+        ax.set_zorder(kwargs.get('zorder'))
+    if kwargs.get('hlines') is not None:
+        for hline in np.atleast_1d(kwargs.get('hlines')):
+            [ax.arrow(ax.get_xlim()[0], hline_y, np.ptp(ax.get_xlim()), 0, lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for hline_y in np.atleast_1d(hline)]
+    if kwargs.get('vlines') is not None:
+        for vline in np.atleast_1d(kwargs.get('vlines')):
+            [ax.arrow(vline_x, ax.get_ylim()[0], 0, np.ptp(ax.get_ylim()), lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for vline_x in np.atleast_1d(vline)]
+    #[tick.label.set_fontsize(2) for tick in ax.xaxis.get_major_ticks()]
+    ax.tick_params(direction='in', length=1, width=0.2, pad=0.4)
+    #[tick.label.set_fontsize(2) for tick in ax.yaxis.get_major_ticks()]
+    _set(ax.set_title,kwargs.get('title'))
+    return lines
+
+def xplot(ax, array1, av_options={'mean':True, 'std':True, 'each':False}, **kwargs):
     x = np.arange(array1.shape[0])
-    lines = [0] * array.shape[line_i]
+    #lines = [0] * array.shape[line_i]
+    lines = [0] * array1.shape[1]
     colors = kwargs.get('colors')
     if colors is None:
         colors = [plt.get_cmap('tab10')(i%10) for i in range(len(lines))]
@@ -67,51 +84,6 @@ def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
                 ,linewidth=0.3
                 ,c=colors[i]
             )[0]
-        '''
-        if array1.ndim > 2 and array1.shape[2] > 1:
-            warnings.simplefilter('ignore', category=RuntimeWarning)
-            y = np.nanmean(array1[:,i,], axis=1)
-            y_sd = np.nanstd(array1[:,i,], axis=1)
-            ax.fill_between(
-                x, y-y_sd, y+y_sd
-                ,facecolor=colors[i], alpha=0.1)
-        else:
-            y = array1[:,i]
-
-        lines[i] = ax.plot(
-            x
-            ,y
-            ,linewidth=0.3
-            ,c=colors[i]
-        )[0]
-        '''
-    if kwargs.get('texts') is not None:
-        [_set(ax.text, text_) for text_ in kwargs.get('texts') if isinstance(text_,dict) and all([xys in text_.keys() for xys in ('x', 'y', 's')])]
-    if kwargs.get('xticks') is not None:
-        _set(ax.set_xticks,kwargs.get('xticks'))
-    if kwargs.get('xticklabels') is not None:
-        _set(ax.set_xticklabels,kwargs.get('xticklabels'))
-    if kwargs.get('yticks') is not None:
-        _set(ax.set_yticks,kwargs.get('yticks'))
-    if kwargs.get('yticklabels') is not None:
-        _set(ax.set_yticklabels,kwargs.get('yticklabels'))
-    if kwargs.get('xlim') is not None:
-        ax.set_xlim(kwargs.get('xlim'))
-    if kwargs.get('ylim') is not None:
-        ax.set_ylim(kwargs.get('ylim'))
-    if kwargs.get('zorder') is not None:
-        ax.set_zorder(kwargs.get('zorder'))
-    if kwargs.get('hlines') is not None:
-        for hline in np.atleast_1d(kwargs.get('hlines')):
-            [ax.arrow(ax.get_xlim()[0], hline_y, np.ptp(ax.get_xlim()), 0, lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for hline_y in np.atleast_1d(hline)]
-    if kwargs.get('vlines') is not None:
-        for vline in np.atleast_1d(kwargs.get('vlines')):
-            [ax.arrow(vline_x, ax.get_ylim()[0], 0, np.ptp(ax.get_ylim()), lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for vline_x in np.atleast_1d(vline)]
-    #[tick.label.set_fontsize(2) for tick in ax.xaxis.get_major_ticks()]
-    ax.tick_params(direction='in', length=1, width=0.2, pad=0.4)
-    #[tick.label.set_fontsize(2) for tick in ax.yaxis.get_major_ticks()]
-    if kwargs.get('title') is not None:
-        _set(ax.set_title,kwargs.get('title'))
     return lines
 
 def _isoverlap(s1s2):#s1_left, s1_right, s1_bottom, s1_top, s2_left, s2_right, s2_bottom, s2_top):
@@ -154,11 +126,27 @@ def _get(x,i):
     else:
         return x
 
+def _gets(kwargs, i):
+    new_keys = [None] * len(kwargs)
+    new_vals = [None] * len(kwargs)
+    for j, (key, val) in enumerate(zip(kwargs.keys(), kwargs.values())):
+        if key[-1] == 's':
+            new_vals[j] = _get(kwargs.get(key, None), i)
+            if (len(key)>3) & (key[-3:] == 'ses'):
+                new_keys[j] = key[:-2]
+            else:
+                new_keys[j] = key[:-1]
+        else:
+            new_keys[j] = key
+            new_vals[j] = val
+    return dict(zip(new_keys, new_vals))
+
 def _set(func, x):
-    if isinstance(x, dict):
-        return func(**x)
-    else:
-        return func(x)
+    if x is not None:
+        if isinstance(x, dict):
+            return func(**x)
+        else:
+            return func(x)
 
 def topoplot(list_of_array, layout='grid', sws=None, shs=None, subtopofunc=None, **kwargs):
     if isinstance(layout, str):
@@ -198,19 +186,22 @@ def topoplot(list_of_array, layout='grid', sws=None, shs=None, subtopofunc=None,
         sw = _get(sws,i) * _get(kwargs.get('subplot_scales', 1), i)
         sh = _get(shs,i) * _get(kwargs.get('subplot_scales', 1), i)
         ax = fig.add_axes(list(layout[i,:]) + [sw, sh])
+        
         lineses[i] = subtopofunc(ax, array
             ,ax_i=i
-            ,texts=_get(kwargs.get('textses', None), i)
-            ,xticks=_get(kwargs.get('xtickses', None), i)
-            ,xticklabels=_get(kwargs.get('xticklabelses', None), i)
-            ,yticks=_get(kwargs.get('ytickses', None), i)
-            ,yticklabels=_get(kwargs.get('yticklabelses', None), i)
-            ,xlim=_get(kwargs.get('xlims', None), i)
-            ,ylim=_get(kwargs.get('ylims', None), i)
-            ,colors=_get(kwargs.get('colorses', None), i)
-            ,zorder=_get(kwargs.get('zorders', None), i)
-            ,title=_get(kwargs.get('titles', None), i)
-            ,**kwargs)
+            ,**_gets(kwargs, i)
+#            ,texts=_get(kwargs.get('textses', None), i)
+#            ,xticks=_get(kwargs.get('xtickses', None), i)
+#            ,xticklabels=_get(kwargs.get('xticklabelses', None), i)
+#            ,yticks=_get(kwargs.get('ytickses', None), i)
+#            ,yticklabels=_get(kwargs.get('yticklabelses', None), i)
+#            ,xlim=_get(kwargs.get('xlims', None), i)
+#            ,ylim=_get(kwargs.get('ylims', None), i)
+#            ,colors=_get(kwargs.get('colorses', None), i)
+#            ,zorder=_get(kwargs.get('zorders', None), i)
+#            ,title=_get(kwargs.get('titles', None), i)
+#            ,**kwargs
+            )
     if kwargs.get('suptitle') is not None:
         fig.suptitle(kwargs.get('suptitle'), y = np.max(layout[:,1])+sh*1.5, verticalalignment='bottom')
     try:
@@ -218,8 +209,8 @@ def topoplot(list_of_array, layout='grid', sws=None, shs=None, subtopofunc=None,
             plt.legend(handles=lineses[0], labels=kwargs.get('labels'), loc=kwargs.get('legend_loc', 3), fontsize=5, bbox_to_anchor=(np.max(layout, axis=0) - layout[i,:] + np.array([sw, sh])) // np.array([sw, sh]))
     except:
         pass
-    if kwargs.get('savefig') is not None:
-        _set(fig.savefig, kwargs.get('savefig'))
+#    if kwargs.get('savefig') is not None:
+    _set(fig.savefig, kwargs.get('savefig'))
     if kwargs.get('show') is not None and not kwargs.get('show'):
         plt.close(fig)
     return fig
