@@ -6,52 +6,6 @@ import warnings
 import re
 from collections import Sequence
 
-def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
-    , av_options={'mean':True, 'std':True, 'each':False}, **kwargs):
-    mpl.rcParams['axes.linewidth'] = 0.2
-    if array.ndim==1:
-        array = np.transpose(np.atleast_3d(array), [1,0,2])
-    else:
-        array = np.atleast_3d(array)
-    if x_i > 2:
-        print('Error! x_i: %d. x_i must be 0, 1 or 2.'%x_i)
-        return
-    if line_i > 2:
-        print('Error! line_i: %d. line_i must be 0, 1 or 2.'%line_i)
-        return
-    if av_i > 2:
-        print('Error! av_i: %d. av_i must be 0, 1 or 2.'%av_i)
-        return
-    if x_i == line_i or x_i == av_i or line_i == av_i:
-        print('Error! x_i: %d, line_i:%d, av_i;%d. x_i, line_i and av_i must be different.'%(x_i,line_i,av_i))
-        return
-    array1 = np.transpose(array, [x_i, line_i, av_i])
-    lines = plot_func(ax, array1, av_options=av_options, **kwargs)
-
-    if kwargs.get('texts') is not None:
-        [_set(ax.text, text_) for text_ in kwargs.get('texts') if isinstance(text_,dict) and all([xys in text_.keys() for xys in ('x', 'y', 's')])]
-    _set(ax.set_xticks,kwargs.get('xticks'))
-    _set(ax.set_xticklabels,kwargs.get('xticklabels'))
-    _set(ax.set_yticks,kwargs.get('yticks'))
-    _set(ax.set_yticklabels,kwargs.get('yticklabels'))
-    if kwargs.get('xlim') is not None:
-        ax.set_xlim(kwargs.get('xlim'))
-    if kwargs.get('ylim') is not None:
-        ax.set_ylim(kwargs.get('ylim'))
-    if kwargs.get('zorder') is not None:
-        ax.set_zorder(kwargs.get('zorder'))
-    if kwargs.get('hlines') is not None:
-        for hline in np.atleast_1d(kwargs.get('hlines')):
-            [ax.arrow(ax.get_xlim()[0], hline_y, np.ptp(ax.get_xlim()), 0, lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for hline_y in np.atleast_1d(hline)]
-    if kwargs.get('vlines') is not None:
-        for vline in np.atleast_1d(kwargs.get('vlines')):
-            [ax.arrow(vline_x, ax.get_ylim()[0], 0, np.ptp(ax.get_ylim()), lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for vline_x in np.atleast_1d(vline)]
-    #[tick.label.set_fontsize(2) for tick in ax.xaxis.get_major_ticks()]
-    ax.tick_params(direction='in', length=1, width=0.2, pad=0.4)
-    #[tick.label.set_fontsize(2) for tick in ax.yaxis.get_major_ticks()]
-    _set(ax.set_title,kwargs.get('title'))
-    return lines
-
 def xplot(ax, array1, av_options={'mean':True, 'std':True, 'each':False}, **kwargs):
     x = np.arange(array1.shape[0])
     #lines = [0] * array.shape[line_i]
@@ -84,6 +38,59 @@ def xplot(ax, array1, av_options={'mean':True, 'std':True, 'each':False}, **kwar
                 ,linewidth=0.3
                 ,c=colors[i]
             )[0]
+    return lines
+
+def sub_topoplot(ax, array, x_i=0, line_i=1, av_i=2
+    , plot_func=xplot
+    , av_options={'mean':True, 'std':True, 'each':False}, **kwargs):
+    mpl.rcParams['axes.linewidth'] = 0.2
+    if isinstance(array, pd.DataFrame):
+        #print('Warning, array is a DataFrame.')
+        array1 = array
+    else:
+        if array.ndim==1:
+            array = np.transpose(np.atleast_3d(array), [1,0,2])
+        else:
+            array = np.atleast_3d(array)
+        if x_i > 2:
+            print('Error! x_i: %d. x_i must be 0, 1 or 2.'%x_i)
+            return
+        if line_i > 2:
+            print('Error! line_i: %d. line_i must be 0, 1 or 2.'%line_i)
+            return
+        if av_i > 2:
+            print('Error! av_i: %d. av_i must be 0, 1 or 2.'%av_i)
+            return
+        if x_i == line_i or x_i == av_i or line_i == av_i:
+            print('Error! x_i: %d, line_i:%d, av_i;%d. x_i, line_i and av_i must be different.'%(x_i,line_i,av_i))
+            return
+        array1 = np.transpose(array, [x_i, line_i, av_i])
+    lines = plot_func(ax, array1, av_options=av_options, **kwargs)
+    
+    if kwargs.get('texts') is not None:
+        [_set(ax.text, text_) for text_ in kwargs.get('texts') if isinstance(text_,dict) and all([xys in text_.keys() for xys in ('x', 'y', 's')])]
+    _set(ax.set_xticks,kwargs.get('xticks'))
+    _set(ax.set_xticklabels,kwargs.get('xticklabels'))
+    _set(ax.set_yticks,kwargs.get('yticks'))
+    _set(ax.set_yticklabels,kwargs.get('yticklabels'))
+    _set(ax.set_xlabel,kwargs.get('xlabel'))
+    _set(ax.set_ylabel,kwargs.get('ylabel'))
+    if kwargs.get('xlim') is not None:
+        ax.set_xlim(kwargs.get('xlim'))
+    if kwargs.get('ylim') is not None:
+        ax.set_ylim(kwargs.get('ylim'))
+    if kwargs.get('zorder') is not None:
+        ax.set_zorder(kwargs.get('zorder'))
+    if kwargs.get('hlines') is not None:
+        for hline in np.atleast_1d(kwargs.get('hlines')):
+            [ax.arrow(ax.get_xlim()[0], hline_y, np.ptp(ax.get_xlim()), 0, lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for hline_y in np.atleast_1d(hline)]
+    if kwargs.get('vlines') is not None:
+        for vline in np.atleast_1d(kwargs.get('vlines')):
+            [ax.arrow(vline_x, ax.get_ylim()[0], 0, np.ptp(ax.get_ylim()), lw=0.1, color='gray', ls='dashed', head_width=0, head_length=0) for vline_x in np.atleast_1d(vline)]
+    #[tick.label.set_fontsize(2) for tick in ax.xaxis.get_major_ticks()]
+    ax.tick_params(direction='in', length=1, width=0.2, pad=0.4)
+    #[tick.label.set_fontsize(2) for tick in ax.yaxis.get_major_ticks()]
+    _set(ax.set_title,kwargs.get('title'))
     return lines
 
 def _isoverlap(s1s2):#s1_left, s1_right, s1_bottom, s1_top, s2_left, s2_right, s2_bottom, s2_top):
@@ -127,18 +134,20 @@ def _get(x,i):
         return x
 
 def _gets(kwargs, i):
-    new_keys = [None] * len(kwargs)
-    new_vals = [None] * len(kwargs)
-    for j, (key, val) in enumerate(zip(kwargs.keys(), kwargs.values())):
+    new_keys = []
+    new_vals = []
+    for key, val in zip(kwargs.keys(), kwargs.values()):
+        if (len(key)>3) & (key[:3]=='sup'):
+            continue
         if key[-1] == 's':
-            new_vals[j] = _get(kwargs.get(key, None), i)
+            new_vals.append(_get(kwargs.get(key, None), i))
             if (len(key)>3) & (key[-3:] == 'ses'):
-                new_keys[j] = key[:-2]
+                new_keys.append(key[:-2])
             else:
-                new_keys[j] = key[:-1]
+                new_keys.append(key[:-1])
         else:
-            new_keys[j] = key
-            new_vals[j] = val
+            new_keys.append(key)
+            new_vals.append(val)
     return dict(zip(new_keys, new_vals))
 
 def _set(func, x):
@@ -181,12 +190,11 @@ def topoplot(list_of_array, layout='grid', sws=None, shs=None, subtopofunc=None,
     if subtopofunc is None:
         subtopofunc = sub_topoplot
     fig = plt.figure(dpi=kwargs.get('dpi', 320), figsize=kwargs.get('figsize', (6,4)))
-    lineses = [0] * len(list_of_array)
+    lineses = [None] * len(list_of_array)
     for i, array in enumerate(list_of_array):
         sw = _get(sws,i) * _get(kwargs.get('subplot_scales', 1), i)
         sh = _get(shs,i) * _get(kwargs.get('subplot_scales', 1), i)
         ax = fig.add_axes(list(layout[i,:]) + [sw, sh])
-        
         lineses[i] = subtopofunc(ax, array
             ,ax_i=i
             ,**_gets(kwargs, i)
@@ -202,15 +210,18 @@ def topoplot(list_of_array, layout='grid', sws=None, shs=None, subtopofunc=None,
 #            ,title=_get(kwargs.get('titles', None), i)
 #            ,**kwargs
             )
-    if kwargs.get('suptitle') is not None:
-        fig.suptitle(kwargs.get('suptitle'), y = np.max(layout[:,1])+sh*1.5, verticalalignment='bottom')
-    try:
-        if kwargs.get('labels') is not None:
-            plt.legend(handles=lineses[0], labels=kwargs.get('labels'), loc=kwargs.get('legend_loc', 3), fontsize=5, bbox_to_anchor=(np.max(layout, axis=0) - layout[i,:] + np.array([sw, sh])) // np.array([sw, sh]))
-    except:
-        pass
-#    if kwargs.get('savefig') is not None:
-    _set(fig.savefig, kwargs.get('savefig'))
-    if kwargs.get('show') is not None and not kwargs.get('show'):
-        plt.close(fig)
-    return fig
+    if pd.isnull(lineses).all():
+        return None
+    else:
+        if kwargs.get('suptitle') is not None:
+            fig.suptitle(kwargs.get('suptitle'), y = np.max(layout[:,1])+sh*1.5, verticalalignment='bottom')
+        #try:
+        if kwargs.get('suplabels') is not None:
+            plt.legend(handles=lineses[pd.notnull(lineses).nonzero()[0][0]], labels=kwargs.get('suplabels'), loc=kwargs.get('suplegend_loc', 3), fontsize=5, bbox_to_anchor=(np.max(layout, axis=0) - layout[i,:] + np.array([sw, sh])) // np.array([sw, sh]))
+        #except:
+        #    pass
+    #    if kwargs.get('savefig') is not None:
+        _set(fig.savefig, kwargs.get('savefig'))
+        if kwargs.get('show') is not None and not kwargs.get('show'):
+            plt.close(fig)
+        return fig
