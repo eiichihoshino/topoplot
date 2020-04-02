@@ -129,7 +129,7 @@ def _find_best_swh(layout, wh_rate=1):
 
 def _get(x,i):
     if isinstance(x, Sequence):
-        return x[i]
+        return x[int(i%len(x))]
     else:
         return x
 
