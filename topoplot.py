@@ -139,7 +139,7 @@ def _gets(kwargs, i):
     for key, val in zip(kwargs.keys(), kwargs.values()):
         if (len(key)>3) & (key[:3]=='sup'):
             continue
-        if key[-1] == 's':
+        if key[-1] == 's' and not key=='av_options':
             new_vals.append(_get(kwargs.get(key, None), i))
             if (len(key)>3) & (key[-3:] == 'ses'):
                 new_keys.append(key[:-2])
